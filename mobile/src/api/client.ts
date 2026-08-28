@@ -2,9 +2,15 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { Platform } from 'react-native';
 import { StorageService } from '../services/storage';
 
-// Default development host resolution
-// iOS Simulator uses localhost, Android emulator uses 10.0.2.2
-const DEFAULT_HOST = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+// Live Production Render Backend URL
+const LIVE_HOST = 'https://voicecall-app.onrender.com';
+
+// Local development fallback (iOS: localhost, Android: 10.0.2.2)
+const LOCAL_DEV_HOST = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+
+// Change to LOCAL_DEV_HOST if you want to test on local computer
+const DEFAULT_HOST = LIVE_HOST;
+
 export const API_BASE_URL = `${DEFAULT_HOST}/api/v1`;
 export const SOCKET_URL = DEFAULT_HOST;
 
