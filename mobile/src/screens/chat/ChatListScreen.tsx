@@ -41,11 +41,14 @@ export const ChatListScreen: React.FC = () => {
       ? conversation.otherMember?.avatarUrl
       : conversation.avatarUrl;
 
+    const otherMemberId = isDirect ? (conversation.otherMember?.id || conversation.members?.find((m: any) => m.userId !== user?.id)?.userId) : undefined;
+
     navigation.navigate('Chat', {
       conversationId: conversation.id,
       title,
       avatarUrl,
       isOnline,
+      recipientId: otherMemberId,
     });
   };
 

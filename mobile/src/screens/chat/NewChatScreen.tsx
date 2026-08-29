@@ -52,6 +52,7 @@ export const NewChatScreen: React.FC = () => {
         title: user.username,
         avatarUrl: user.avatarUrl,
         isOnline: user.isOnline,
+        recipientId: user.id,
       });
     } catch (err) {
       console.warn('Failed to start conversation:', err);

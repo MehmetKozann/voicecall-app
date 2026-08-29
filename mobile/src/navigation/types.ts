@@ -15,6 +15,7 @@ export type MainStackParamList = {
     title: string;
     avatarUrl?: string | null;
     isOnline?: boolean;
+    recipientId?: string;
   };
   NewChat: undefined;
   Profile: undefined;

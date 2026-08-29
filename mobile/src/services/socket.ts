@@ -2,6 +2,8 @@ import { io, Socket } from 'socket.io-client';
 import { SOCKET_URL } from '../api/client';
 import { StorageService } from './storage';
 import { Message, MessageType } from '../types/chat.types';
+import { useCallStore } from '../store/callStore';
+import { webrtcService } from './webrtcService';
 
 class SocketService {
   private socket: Socket | null = null;
@@ -30,14 +32,20 @@ class SocketService {
       },
       transports: ['websocket'],
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 15,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
     });
 
+    // Wire up call signaling immediately
+    this.setupCallSignaling(this.socket);
+
     this.socket.on('connect', () => {
       console.log('⚡ Socket.IO Connected successfully');
       this.isConnecting = false;
+      if (this.socket) {
+        this.setupCallSignaling(this.socket);
+      }
     });
 
     this.socket.on('connect_error', (err) => {
@@ -51,6 +59,60 @@ class SocketService {
     });
 
     return this.socket;
+  }
+
+  /**
+   * Setup voice call signaling handlers on active socket
+   */
+  private setupCallSignaling(socket: Socket) {
+    socket.off('call:incoming');
+    socket.off('call:accepted');
+    socket.off('call:rejected');
+    socket.off('call:ended');
+    socket.off('call:signal');
+
+    socket.on('call:incoming', (data: any) => {
+      console.log('📞 Received call:incoming event:', data);
+      useCallStore.getState().incomingCall({
+        callerId: data.callerId,
+        callerName: data.callerName,
+        callerAvatar: data.callerAvatar,
+        conversationId: data.conversationId,
+      });
+    });
+
+    socket.on('call:accepted', (data: any) => {
+      console.log('✅ Received call:accepted event:', data);
+      useCallStore.setState({ status: 'CONNECTED', duration: 0 });
+    });
+
+    socket.on('call:rejected', (data: any) => {
+      console.log('❌ Received call:rejected event:', data);
+      webrtcService.closeConnection();
+      useCallStore.setState({ status: 'ENDED' });
+      setTimeout(() => useCallStore.getState().resetCall(), 1200);
+    });
+
+    socket.on('call:ended', (data: any) => {
+      console.log('🛑 Received call:ended event:', data);
+      webrtcService.closeConnection();
+      useCallStore.setState({ status: 'ENDED' });
+      setTimeout(() => useCallStore.getState().resetCall(), 1200);
+    });
+
+    socket.on('call:signal', async (data: { senderId: string; signal: any; type: string }) => {
+      console.log('📶 Received call:signal event:', data.type);
+      if (data.type === 'offer') {
+        useCallStore.getState().setPendingOffer(data.signal);
+        if (useCallStore.getState().status === 'CONNECTED') {
+          await webrtcService.handleOffer(data.senderId, data.signal);
+        }
+      } else if (data.type === 'answer') {
+        await webrtcService.handleAnswer(data.signal);
+      } else if (data.type === 'candidate') {
+        await webrtcService.handleCandidate(data.signal);
+      }
+    });
   }
 
   /**
@@ -173,4 +235,3 @@ class SocketService {
 }
 
 export const socketService = new SocketService();
-

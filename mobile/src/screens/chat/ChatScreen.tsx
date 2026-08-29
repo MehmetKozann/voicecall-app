@@ -26,7 +26,7 @@ import { useCallStore } from '../../store/callStore';
 export const ChatScreen: React.FC = () => {
   const route = useRoute<ChatScreenRouteProp>();
   const navigation = useNavigation<MainNavigationProp>();
-  const { conversationId, title, avatarUrl, isOnline: initialOnline } = route.params;
+  const { conversationId, title, avatarUrl, isOnline: initialOnline, recipientId } = route.params;
 
   const currentUserId = useAuthStore((state) => state.user?.id);
   const {
@@ -45,12 +45,15 @@ export const ChatScreen: React.FC = () => {
 
   // Find other participant for calling
   const currentConv = conversations.find((c) => c.id === conversationId);
-  const otherMember = currentConv?.members.find((m) => m.userId !== currentUserId)?.user;
+  const otherMember = currentConv?.members?.find((m) => m.userId !== currentUserId)?.user;
 
   const handleStartCall = () => {
-    const targetUserId = otherMember?.id || currentConv?.members.find((m) => m.userId !== currentUserId)?.userId;
+    const targetUserId = recipientId || otherMember?.id || currentConv?.members?.find((m) => m.userId !== currentUserId)?.userId;
     if (targetUserId) {
+      console.log('Initiating voice call to user:', targetUserId);
       startCall(targetUserId, title, conversationId, avatarUrl);
+    } else {
+      console.warn('Cannot start call: target user ID not found');
     }
   };
 
