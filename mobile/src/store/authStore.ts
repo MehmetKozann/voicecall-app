@@ -52,12 +52,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const res = await authApi.quickLogin(username);
       await StorageService.saveTokens(res.tokens.accessToken, res.tokens.refreshToken);
-      set({ user: res.user, isAuthenticated: true, isLoading: false });
+      set({ user: res.user, isAuthenticated: true, isLoading: false, error: null });
 
-      await socketService.connect();
+      // Connect socket in background without blocking navigation
+      socketService.connect().catch((sErr) => {
+        console.warn('Socket connect in background error:', sErr);
+      });
       return true;
     } catch (err: any) {
-      const message = err.response?.data?.message || 'Login failed.';
+      console.warn('Quick login error:', err);
+      let message = err.response?.data?.message;
+      if (!message) {
+        if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+          message = 'Sunucu uyanıyor, lütfen 10 saniye sonra tekrar deneyin.';
+        } else if (err.message === 'Network Error') {
+          message = 'İnternet bağlantınızı veya sunucu erişimini kontrol edin.';
+        } else {
+          message = err.message || 'Giriş yapılamadı.';
+        }
+      }
       set({
         error: Array.isArray(message) ? message.join(', ') : message,
         isLoading: false,
